@@ -31,6 +31,9 @@ struct io_uring_sqe {
 		__u32		timeout_flags;
 	};
 	__u64	user_data;	/* data to be passed back at completion time */
+
+	__u64 usr_falg; //gql-add flag to io pass
+
 	union {
 		__u16	buf_index;	/* index into fixed buffers, if used */
 		__u64	__pad2[3];

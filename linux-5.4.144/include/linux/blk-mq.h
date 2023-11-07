@@ -117,7 +117,7 @@ struct blk_mq_tag_set {
 
 struct blk_mq_queue_data {
 	struct request *rq;
-	bool last;
+	bool last;/*区分一个合并请求中的最后一个子请求*/
 };
 
 typedef blk_status_t (queue_rq_fn)(struct blk_mq_hw_ctx *,

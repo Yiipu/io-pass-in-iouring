@@ -2319,7 +2319,7 @@ generic_file_read_iter(struct kiocb *iocb, struct iov_iter *iter)
 
 		file_accessed(file);
 
-		retval = mapping->a_ops->direct_IO(iocb, iter);
+		retval = mapping->a_ops->direct_IO(iocb, iter); //gql-process for direct io 
 		if (retval >= 0) {
 			iocb->ki_pos += retval;
 			count -= retval;

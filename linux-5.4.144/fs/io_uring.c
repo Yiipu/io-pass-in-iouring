@@ -1124,6 +1124,8 @@ static int io_prep_rw(struct io_kiocb *req, const struct sqe_submit *s,
 	kiocb->ki_flags = iocb_flags(kiocb->ki_filp);
 	kiocb->ki_hint = ki_hint_validate(file_write_hint(kiocb->ki_filp));
 
+	kiocb->ki_usrfalg = READ_ONCE(sqe->usr_falg);//Gtodo: gql_add-third req trans
+
 	ioprio = READ_ONCE(sqe->ioprio);
 	if (ioprio) {
 		ret = ioprio_check_cap(ioprio);
@@ -1412,7 +1414,8 @@ static int io_read(struct io_kiocb *req, const struct sqe_submit *s,
 	struct file *file;
 	size_t iov_count;
 	ssize_t read_size, ret;
-
+	
+	//pass the user flag to kiocb
 	ret = io_prep_rw(req, s, force_nonblock);
 	if (ret)
 		return ret;
@@ -2121,6 +2124,7 @@ static int __io_submit_sqe(struct io_ring_ctx *ctx, struct io_kiocb *req,
 		ret = io_nop(req, req->user_data);
 		break;
 	case IORING_OP_READV:
+		//Gtodo prtink("io_submit_sqe: IORING_OP_READV\n");
 		if (unlikely(s->sqe->buf_index))
 			return -EINVAL;
 		ret = io_read(req, s, force_nonblock);
@@ -2582,7 +2586,7 @@ static void io_submit_sqe(struct io_ring_ctx *ctx, struct sqe_submit *s,
 		goto err;
 	}
 
-	memcpy(&req->submit, s, sizeof(*s));
+	memcpy(&req->submit, s, sizeof(*s));//Gtodo： gql-second request trans
 	ret = io_req_set_file(ctx, s, state, req);
 	if (unlikely(ret)) {
 err_req:
@@ -2709,7 +2713,7 @@ static bool io_get_sqring(struct io_ring_ctx *ctx, struct sqe_submit *s)
 	head = READ_ONCE(sq_array[head & ctx->sq_mask]);
 	if (head < ctx->sq_entries) {
 		s->index = head;
-		s->sqe = &ctx->sq_sqes[head];
+		s->sqe = &ctx->sq_sqes[head];//Gtodo:gql-firsit trans to kernel
 		s->opcode = READ_ONCE(s->sqe->opcode);
 		s->sequence = ctx->cached_sq_head;
 		ctx->cached_sq_head++;

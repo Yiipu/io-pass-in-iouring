@@ -1832,7 +1832,7 @@ static blk_status_t __blk_mq_issue_directly(struct blk_mq_hw_ctx *hctx,
 	 * Any other error (busy), just add it to our list as we
 	 * previously would have done.
 	 */
-	ret = q->mq_ops->queue_rq(hctx, &bd);
+	ret = q->mq_ops->queue_rq(hctx, &bd);/*gql_提交到nvme设备的请求队列当中*/
 	switch (ret) {
 	case BLK_STS_OK:
 		blk_mq_update_dispatch_busy(hctx, false);
@@ -1970,7 +1970,8 @@ static void blk_add_rq_to_plug(struct blk_plug *plug, struct request *rq)
 			plug->multiple_queues = true;
 	}
 }
-
+/* Gtodo：bio to request ,no change trans by rq->bio*/
+/*负责将一个bio（块I/O）结构体转换为一个request，然后将request插入到适当的请求队列中。*/
 static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
 {
 	const int is_sync = op_is_sync(bio->bi_opf);
@@ -2012,7 +2013,7 @@ static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
 
 	cookie = request_to_qc_t(data.hctx, rq);
 
-	blk_mq_bio_to_request(rq, bio, nr_segs);
+	blk_mq_bio_to_request(rq, bio, nr_segs); /* gql-next io req-flag pass */
 
 	plug = blk_mq_plug(q, bio);
 	if (unlikely(is_flush_fua)) {

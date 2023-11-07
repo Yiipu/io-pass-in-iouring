@@ -336,7 +336,7 @@ static void blkdev_bio_end_io(struct bio *bio)
 		bio_put(bio);
 	}
 }
-
+//Gtodo kiocb to bio 
 static ssize_t
 __blkdev_direct_IO(struct kiocb *iocb, struct iov_iter *iter, int nr_pages)
 {
@@ -358,7 +358,7 @@ __blkdev_direct_IO(struct kiocb *iocb, struct iov_iter *iter, int nr_pages)
 
 	bio = bio_alloc_bioset(GFP_KERNEL, nr_pages, &blkdev_dio_pool);
 
-	dio = container_of(bio, struct blkdev_dio, bio);
+	dio = container_of(bio, struct blkdev_dio, bio);/**/
 	dio->is_sync = is_sync = is_sync_kiocb(iocb);
 	if (dio->is_sync) {
 		dio->waiter = current;
@@ -373,20 +373,26 @@ __blkdev_direct_IO(struct kiocb *iocb, struct iov_iter *iter, int nr_pages)
 
 	/*
 	 * Don't plug for HIPRI/polled IO, as those should go straight
-	 * to issue
+	 * to issue 
 	 */
-	if (!is_poll)
+	/*在 Linux 内核中，插入（plug）是一种 I/O 调度策略，
+	 *它可以将多个 I/O 请求合并为一个，以减少设备的寻道次数，
+	 *提高 I/O 性能。但是，对于高优先级或轮询的 I/O 操作，
+	 *我们通常希望它们能够尽快被处理，因此不应该使用插入策略，而应该直接提交给设备。
+	*/
+	if (!is_poll)/*开启io聚合的起点，否则直接被提交到设备中，不然就优化聚合后再下发*/
 		blk_start_plug(&plug);
 
 	for (;;) {
 		bio_set_dev(bio, bdev);
 		bio->bi_iter.bi_sector = pos >> 9;
 		bio->bi_write_hint = iocb->ki_hint;
-		bio->bi_private = dio;
-		bio->bi_end_io = blkdev_bio_end_io;
+		bio->bi_private = dio;/*__blkdev_direct_IO函数所在上下文与bio回调函数之间传递私有数据的通道*/
+		bio->bi_end_io = blkdev_bio_end_io;/*Gtodo：设置回调函数，需要在dio结构体中页放置一个usrflag么？*/
 		bio->bi_ioprio = iocb->ki_ioprio;
+		bio->bi_usrflag = iocb->ki_usrfalg;/*gql-pass usrflag from kiocb to bio*/
 
-		ret = bio_iov_iter_get_pages(bio, iter);
+		ret = bio_iov_iter_get_pages(bio, iter);/*读取用户缓冲区数据地址，后面进行io驱动请求的时候能够直接拷贝到用户请求中*/
 		if (unlikely(ret)) {
 			bio->bi_status = BLK_STS_IOERR;
 			bio_endio(bio);
@@ -2022,7 +2028,7 @@ ssize_t blkdev_write_iter(struct kiocb *iocb, struct iov_iter *from)
 }
 EXPORT_SYMBOL_GPL(blkdev_write_iter);
 
-ssize_t blkdev_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ssize_t blkdev_read_iter(struct kiocb *iocb, struct iov_iter *to)//Gtodo :read in blk layer begin
 {
 	struct file *file = iocb->ki_filp;
 	struct inode *bd_inode = bdev_file_inode(file);
@@ -2065,7 +2071,9 @@ static int blkdev_writepages(struct address_space *mapping,
 {
 	return generic_writepages(mapping, wbc);
 }
-
+/* gql- 
+ * 02-Defines a collection of address space manipulation interface implementation functions common to block device files
+ */
 static const struct address_space_operations def_blk_aops = {
 	.readpage	= blkdev_readpage,
 	.readpages	= blkdev_readpages,
@@ -2147,7 +2155,9 @@ static long blkdev_fallocate(struct file *file, int mode, loff_t start,
 					     start >> PAGE_SHIFT,
 					     end >> PAGE_SHIFT);
 }
-
+/* gql- 
+ * 01 Define a common default set of file operations to be used by the block device file system.
+ */
 const struct file_operations def_blk_fops = {
 	.open		= blkdev_open,
 	.release	= blkdev_close,
