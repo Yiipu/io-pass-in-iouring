@@ -1970,7 +1970,7 @@ static void blk_add_rq_to_plug(struct blk_plug *plug, struct request *rq)
 			plug->multiple_queues = true;
 	}
 }
-/* Gtodo：bio to request ,no change trans by rq->bio*/
+/* Gtodo：strcut bio --> strcut request ,no change trans by rq->bio*/
 /*负责将一个bio（块I/O）结构体转换为一个request，然后将request插入到适当的请求队列中。*/
 static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
 {

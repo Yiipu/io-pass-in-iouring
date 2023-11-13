@@ -917,7 +917,7 @@ static blk_status_t nvme_queue_rq(struct blk_mq_hw_ctx *hctx,
 	if (unlikely(!test_bit(NVMEQ_ENABLED, &nvmeq->flags)))
 		return BLK_STS_IOERR;
 
-	ret = nvme_setup_cmd(ns, req, &cmnd);
+	ret = nvme_setup_cmd(ns, req, &cmnd);/*Gtodo: strcut request --> struct nvme_rw_command*/
 	if (ret)
 		return ret;
 
@@ -933,7 +933,7 @@ static blk_status_t nvme_queue_rq(struct blk_mq_hw_ctx *hctx,
 			goto out_unmap_data;
 	}
 
-	blk_mq_start_request(req);/*标记请求已经开始处理*/
+	blk_mq_start_request(req);/*gql-标记请求已经开始处理*/
 	nvme_submit_cmd(nvmeq, &cmnd, bd->last);
 	return BLK_STS_OK;
 out_unmap_data:
@@ -979,9 +979,9 @@ static inline struct blk_mq_tags *nvme_queue_tagset(struct nvme_queue *nvmeq)
 		return nvmeq->dev->admin_tagset.tags[0];
 	return nvmeq->dev->tagset.tags[nvmeq->qid - 1];
 }
-/* gql- pass usrflag back to bio if any */
+/* gql- pass usrflag back to bio if any,声明中加了volatile---debug notice */
 static inline void pass_usrflag_to_bio(struct request *req,
-					 struct nvme_completion *cqe)
+					 volatile struct nvme_completion *cqe)
 {
 	WARN_ON(req == NULL);
 #if 0
@@ -1018,8 +1018,7 @@ static inline void nvme_handle_cqe(struct nvme_queue *nvmeq, u16 idx)
 		return;
 	}
 
-	/* gql-cqe中取出返回值 */
-	pass_usrflag_to_bio(req, cqe);
+
 
 	req = blk_mq_tag_to_rq(nvme_queue_tagset(nvmeq), cqe->command_id);
 	if (unlikely(!req)) {
@@ -1028,6 +1027,9 @@ static inline void nvme_handle_cqe(struct nvme_queue *nvmeq, u16 idx)
 			cqe->command_id, le16_to_cpu(cqe->sq_id));
 		return;
 	}
+
+	/* gql-011: cqe中取出返回值 */
+	pass_usrflag_to_bio(req, cqe);
 
 	trace_nvme_sq(req, cqe->sq_head, nvmeq->sq_tail);
 	nvme_end_request(req, cqe->status, cqe->result);/*gql-结束请求request后的处理,后续进一步处理request里面的bio的释放*/
