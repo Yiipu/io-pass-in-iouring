@@ -298,7 +298,7 @@ static int blkdev_iopoll(struct kiocb *kiocb, bool wait)
 	return blk_poll(q, READ_ONCE(kiocb->ki_cookie), wait);
 }
 
-static void blkdev_bio_end_io(struct bio *bio)
+static void blkdev_bio_end_io(struct bio *bio)//Gtodo: gql-回调函数，bio的回调函数，在此将bio的返回数据传递给kiocb
 {
 	struct blkdev_dio *dio = bio->bi_private;
 	bool should_dirty = dio->should_dirty;
@@ -317,6 +317,8 @@ static void blkdev_bio_end_io(struct bio *bio)
 			} else {
 				ret = blk_status_to_errno(dio->bio.bi_status);
 			}
+			/*gql-trans将bio里面从设备端返回的flag消息传递回给kiocb*/
+			iocb->ki_flags |= bio->bi_usrflag;
 
 			dio->iocb->ki_complete(iocb, ret, 0);
 			if (dio->multi_bio)
@@ -388,14 +390,14 @@ __blkdev_direct_IO(struct kiocb *iocb, struct iov_iter *iter, int nr_pages)
 		bio->bi_iter.bi_sector = pos >> 9;
 		bio->bi_write_hint = iocb->ki_hint;
 		bio->bi_private = dio;/*__blkdev_direct_IO函数所在上下文与bio回调函数之间传递私有数据的通道*/
-		bio->bi_end_io = blkdev_bio_end_io;/*Gtodo：设置回调函数，需要在dio结构体中页放置一个usrflag么？*/
+		bio->bi_end_io = blkdev_bio_end_io;/*Gtodo：gql-设置回调函数，使用dio结构传递返回参数和数据*/
 		bio->bi_ioprio = iocb->ki_ioprio;
-		bio->bi_usrflag = iocb->ki_usrfalg;/*gql-pass usrflag from kiocb to bio*/
+		bio->bi_usrflag = iocb->ki_usrfalg;/*Gtodo: gql-third trans pass usrflag from kiocb to bio*/
 
-		ret = bio_iov_iter_get_pages(bio, iter);/*读取用户缓冲区数据地址，后面进行io驱动请求的时候能够直接拷贝到用户请求中*/
+		ret = bio_iov_iter_get_pages(bio, iter);/*gql-读取用户缓冲区数据地址，后面进行io驱动请求的时候能够直接拷贝到用户请求中*/
 		if (unlikely(ret)) {
 			bio->bi_status = BLK_STS_IOERR;
-			bio_endio(bio);
+			bio_endio(bio);/*唯一能够调用回调函数的地方-ps(在direct-io的路径下*/
 			break;
 		}
 

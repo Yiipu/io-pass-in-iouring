@@ -599,7 +599,7 @@ static void io_cqring_fill_event(struct io_ring_ctx *ctx, u64 ki_user_data,
 	 */
 	cqe = io_get_cqring(ctx);
 	if (cqe) {
-		WRITE_ONCE(cqe->user_data, ki_user_data);
+		WRITE_ONCE(cqe->user_data, ki_user_data);/*gql-写回底层传递数据*/
 		WRITE_ONCE(cqe->res, res);
 		WRITE_ONCE(cqe->flags, 0);
 	} else {
@@ -982,7 +982,8 @@ static void io_complete_rw(struct kiocb *kiocb, long res, long res2)
 
 	if ((req->flags & REQ_F_LINK) && res != req->result)
 		req->flags |= REQ_F_FAIL_LINK;
-	io_cqring_add_event(req->ctx, req->user_data, res);
+	// io_cqring_add_event(req->ctx, req->user_data, res);
+	io_cqring_add_event(req->ctx, kiocb->ki_usrfalg, res);/*修改，传递会给cqe*/
 	io_put_req(req);
 }
 
@@ -1124,7 +1125,7 @@ static int io_prep_rw(struct io_kiocb *req, const struct sqe_submit *s,
 	kiocb->ki_flags = iocb_flags(kiocb->ki_filp);
 	kiocb->ki_hint = ki_hint_validate(file_write_hint(kiocb->ki_filp));
 
-	kiocb->ki_usrfalg = READ_ONCE(sqe->usr_falg);//Gtodo: gql_add-third req trans
+	kiocb->ki_usrfalg = READ_ONCE(sqe->usr_falg);//Gtodo: gql- flag sqe_submit to kiocb
 
 	ioprio = READ_ONCE(sqe->ioprio);
 	if (ioprio) {
@@ -1159,7 +1160,7 @@ static int io_prep_rw(struct io_kiocb *req, const struct sqe_submit *s,
 	} else {
 		if (kiocb->ki_flags & IOCB_HIPRI)
 			return -EINVAL;
-		kiocb->ki_complete = io_complete_rw;
+		kiocb->ki_complete = io_complete_rw;/*gql-处理kiocb的回调函数*/
 	}
 	return 0;
 }

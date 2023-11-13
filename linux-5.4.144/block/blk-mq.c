@@ -1832,7 +1832,7 @@ static blk_status_t __blk_mq_issue_directly(struct blk_mq_hw_ctx *hctx,
 	 * Any other error (busy), just add it to our list as we
 	 * previously would have done.
 	 */
-	ret = q->mq_ops->queue_rq(hctx, &bd);/*gql_提交到nvme设备的请求队列当中*/
+	ret = q->mq_ops->queue_rq(hctx, &bd);/*gql-提交到nvme设备的请求队列当中*/
 	switch (ret) {
 	case BLK_STS_OK:
 		blk_mq_update_dispatch_busy(hctx, false);

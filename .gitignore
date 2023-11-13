@@ -1,1 +1,3 @@
-./*.d
+*.o.d
+
+.vscode/*.json

@@ -335,7 +335,7 @@ struct kiocb {
 
 static inline bool is_sync_kiocb(struct kiocb *kiocb)
 {
-	return kiocb->ki_complete == NULL;
+	return kiocb->ki_complete == NULL;/*kiocb的回调函数为空的话表明不是一个异步请求，是同步*/
 }
 
 /*

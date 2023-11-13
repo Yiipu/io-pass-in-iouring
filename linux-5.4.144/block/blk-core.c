@@ -1462,7 +1462,7 @@ bool blk_update_request(struct request *req, blk_status_t error,
 
 		/* Completion has already been traced */
 		bio_clear_flag(bio, BIO_TRACE_COMPLETION);
-		req_bio_endio(req, bio, bio_bytes, error);
+		req_bio_endio(req, bio, bio_bytes, error);/*gql-request结束后处理bio的流程*/
 
 		total_bytes += bio_bytes;
 		nr_bytes -= bio_bytes;

@@ -979,6 +979,26 @@ static inline struct blk_mq_tags *nvme_queue_tagset(struct nvme_queue *nvmeq)
 		return nvmeq->dev->admin_tagset.tags[0];
 	return nvmeq->dev->tagset.tags[nvmeq->qid - 1];
 }
+/* gql- pass usrflag back to bio if any */
+static inline void pass_usrflag_to_bio(struct request *req,
+					 struct nvme_completion *cqe)
+{
+	WARN_ON(req == NULL);
+#if 0
+	if (req->bio && req->bio->is_read) {
+		printk("%s,rlat(us)=%llu,rfw=%d,PL=%d,cid=%d,gcrt=%llu,status=0x%x,%d\n",
+		       devname, ktime_us_delta(ktime_get(), req->bio->st),
+		       !req->bio->is_user_req, req->bio->pl, cqe->command_id,
+		       cqe->result.u64, le16_to_cpu(cqe->status) >> 1,
+		       (req->bio == req->biotail));
+	} else if (!req->bio) {
+		//printk("%s, shit, req->bio=%p\n", devname, req->bio);
+	}
+#endif
+	/* Coperd: is this enough?? */
+	//WARN_ON(req->bio != req->biotail);
+	req->bio->bi_usrflag = cqe->result.u64;
+}
 
 static inline void nvme_handle_cqe(struct nvme_queue *nvmeq, u16 idx)
 {
@@ -998,6 +1018,9 @@ static inline void nvme_handle_cqe(struct nvme_queue *nvmeq, u16 idx)
 		return;
 	}
 
+	/* gql-cqe中取出返回值 */
+	pass_usrflag_to_bio(req, cqe);
+
 	req = blk_mq_tag_to_rq(nvme_queue_tagset(nvmeq), cqe->command_id);
 	if (unlikely(!req)) {
 		dev_warn(nvmeq->dev->ctrl.device,
@@ -1007,7 +1030,7 @@ static inline void nvme_handle_cqe(struct nvme_queue *nvmeq, u16 idx)
 	}
 
 	trace_nvme_sq(req, cqe->sq_head, nvmeq->sq_tail);
-	nvme_end_request(req, cqe->status, cqe->result);
+	nvme_end_request(req, cqe->status, cqe->result);/*gql-结束请求request后的处理,后续进一步处理request里面的bio的释放*/
 }
 
 static void nvme_complete_cqes(struct nvme_queue *nvmeq, u16 start, u16 end)
