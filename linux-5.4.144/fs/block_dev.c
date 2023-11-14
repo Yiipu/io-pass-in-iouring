@@ -360,7 +360,7 @@ __blkdev_direct_IO(struct kiocb *iocb, struct iov_iter *iter, int nr_pages)
 
 	bio = bio_alloc_bioset(GFP_KERNEL, nr_pages, &blkdev_dio_pool);
 
-	dio = container_of(bio, struct blkdev_dio, bio);/**/
+	dio = container_of(bio, struct blkdev_dio, bio);
 	dio->is_sync = is_sync = is_sync_kiocb(iocb);
 	if (dio->is_sync) {
 		dio->waiter = current;
