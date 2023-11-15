@@ -329,7 +329,7 @@ struct kiocb {
 	u16			ki_ioprio; /* See linux/ioprio.h */
 	unsigned int		ki_cookie; /* for ->iopoll */
 
-	u64 ki_usrfalg; //gql-add flag to io pass
+	u64 ki_usrflag; //gql-add flag to io pass
 	randomized_struct_fields_end
 };
 

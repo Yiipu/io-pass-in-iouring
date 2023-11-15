@@ -983,7 +983,7 @@ static void io_complete_rw(struct kiocb *kiocb, long res, long res2)
 	if ((req->flags & REQ_F_LINK) && res != req->result)
 		req->flags |= REQ_F_FAIL_LINK;
 	// io_cqring_add_event(req->ctx, req->user_data, res);
-	io_cqring_add_event(req->ctx, kiocb->ki_usrfalg, res);/*gql-014:修改源代码，传递信息回给用户的cqe*/
+	io_cqring_add_event(req->ctx, kiocb->ki_usrflag, res);/*gql-014:修改源代码，传递信息回给用户的cqe*/
 	io_put_req(req);
 }
 
@@ -1125,7 +1125,7 @@ static int io_prep_rw(struct io_kiocb *req, const struct sqe_submit *s,
 	kiocb->ki_flags = iocb_flags(kiocb->ki_filp);
 	kiocb->ki_hint = ki_hint_validate(file_write_hint(kiocb->ki_filp));
 
-	kiocb->ki_usrfalg = READ_ONCE(sqe->usr_falg);/*gql-002: flag sqe_submit to kiocb*/
+	kiocb->ki_usrflag = READ_ONCE(sqe->usr_flag);/*gql-002: flag sqe_submit to kiocb*/
 
 	ioprio = READ_ONCE(sqe->ioprio);
 	if (ioprio) {

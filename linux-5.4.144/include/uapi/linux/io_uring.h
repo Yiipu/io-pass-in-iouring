@@ -32,11 +32,22 @@ struct io_uring_sqe {
 	};
 	__u64	user_data;	/* data to be passed back at completion time */
 
-	__u64 usr_falg; /*gql-001:add flag to io pass*/
 
 	union {
-		__u16	buf_index;	/* index into fixed buffers, if used */
-		__u64	__pad2[3];
+		/* index into fixed buffers, if used */
+		__u16	buf_index;
+		/* for grouped buffer selection */
+		__u16	buf_group;
+	} __attribute__((packed));
+	/* personality to use, if used */
+	__u16	personality;
+	union {
+		__s32	splice_fd_in;
+		__u32	file_index;
+	};
+	union{
+		__u64   usr_flag;
+		__u64	__pad2[2];
 	};
 };
 
