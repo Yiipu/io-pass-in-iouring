@@ -997,7 +997,10 @@ static inline void pass_usrflag_to_bio(struct request *req,
 #endif
 	/* Coperd: is this enough?? */
 	//WARN_ON(req->bio != req->biotail);
-	req->bio->bi_usrflag = cqe->result.u64;
+	if (req && req->bio) {
+		printk("Nvem_handle_ceqe: pass cqe->usrflag: %llu\n",cqe->result.u64);
+		req->bio->bi_usrflag = cqe->result.u64;
+	}
 }
 
 static inline void nvme_handle_cqe(struct nvme_queue *nvmeq, u16 idx)
@@ -1028,6 +1031,7 @@ static inline void nvme_handle_cqe(struct nvme_queue *nvmeq, u16 idx)
 
 	/* gql-011: cqe中取出返回值 */
 	pass_usrflag_to_bio(req, cqe);
+
 
 	trace_nvme_sq(req, cqe->sq_head, nvmeq->sq_tail);
 	nvme_end_request(req, cqe->status, cqe->result);/*gql-结束请求request后的处理,后续进一步处理request里面的bio的释放*/

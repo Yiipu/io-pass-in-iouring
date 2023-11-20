@@ -317,8 +317,9 @@ static void blkdev_bio_end_io(struct bio *bio)/*gql-回调函数，bio的回调�
 			} else {
 				ret = blk_status_to_errno(dio->bio.bi_status);
 			}
-			/*gql-012:trans将bio里面从设备端返回的flag消息传递回给kiocb*/
-			iocb->ki_flags = bio->bi_usrflag;
+				/*gql-012:trans将bio里面从设备端返回的flag消息传递回给kiocb*/
+			printk("blkdev_bio_end_io: bio-iocb: %llu\n",bio->bi_usrflag);
+			iocb->ki_usrflag = bio->bi_usrflag;
 
 			dio->iocb->ki_complete(iocb, ret, 0);
 			if (dio->multi_bio)
