@@ -795,7 +795,8 @@ static void io_iopoll_complete(struct io_ring_ctx *ctx, unsigned int *nr_events,
 		req = list_first_entry(done, struct io_kiocb, list);
 		list_del(&req->list);
 
-		io_cqring_fill_event(ctx, req->user_data, req->result);
+		// printk("302: io_iopoll_complete: %llu\n",req->user_data);
+		io_cqring_fill_event(ctx,req->user_data, req->result);
 		(*nr_events)++;
 
 		if (refcount_dec_and_test(&req->refs)) {
@@ -983,7 +984,7 @@ static void io_complete_rw(struct kiocb *kiocb, long res, long res2)
 	if ((req->flags & REQ_F_LINK) && res != req->result)
 		req->flags |= REQ_F_FAIL_LINK;
 	// io_cqring_add_event(req->ctx, req->user_data, res);
-	printk("013: io_complete_rw: kiocb->ki_usrflag -- uring_cqe: %llu\n",kiocb->ki_usrflag);
+	// printk("013: io_complete_rw: kiocb->ki_usrflag -- uring_cqe: %llu\n",kiocb->ki_usrflag);
 	io_cqring_add_event(req->ctx, kiocb->ki_usrflag, res);/*gql-014:修改源代码，传递信息回给用户的cqe*/
 	io_put_req(req);
 }
@@ -992,6 +993,8 @@ static void io_complete_rw_iopoll(struct kiocb *kiocb, long res, long res2)
 {
 	struct io_kiocb *req = container_of(kiocb, struct io_kiocb, rw);
 
+	req->user_data = kiocb->ki_usrflag;
+	// printk("014: io_complete_rw_iopoll: kiocb->ki_usrflag -- uring_cqe: %llu\n",req->rw.ki_usrflag);
 	if (kiocb->ki_flags & IOCB_WRITE)
 		kiocb_end_write(req);
 
@@ -1125,9 +1128,8 @@ static int io_prep_rw(struct io_kiocb *req, const struct sqe_submit *s,
 	kiocb->ki_pos = READ_ONCE(sqe->off);
 	kiocb->ki_flags = iocb_flags(kiocb->ki_filp);
 	kiocb->ki_hint = ki_hint_validate(file_write_hint(kiocb->ki_filp));
-	printk("002->io_read->io_prep_rw: sqe->usrflag: %llu\n",sqe->usr_flag);
 	kiocb->ki_usrflag = READ_ONCE(sqe->usr_flag);/*gql-002: flag sqe_submit to kiocb*/
-
+	// printk("002:->io_read->io_prep_rw: sqe->usrflag -- kiocb->flag: %llu \n",kiocb->ki_usrflag);
 	ioprio = READ_ONCE(sqe->ioprio);
 	if (ioprio) {
 		ret = ioprio_check_cap(ioprio);
@@ -2945,7 +2947,7 @@ static int io_ring_submit(struct io_ring_ctx *ctx, unsigned int to_submit)
 		{
 			break;
 		}
-		printk("00: io_ring_submit --  sqesubmit->usrflag:%llu\n",s.sqe->usr_flag);
+		printk("001: io_ring_submit:sqe->usrflag:%llu,sqe->usrdata:%llu\n",s.sqe->usr_flag,s.sqe->user_data);
 		/*
 		 * If previous wasn't linked and we have a linked command,
 		 * that's the end of the chain. Submit the previous link.

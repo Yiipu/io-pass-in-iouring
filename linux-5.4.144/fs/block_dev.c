@@ -318,7 +318,7 @@ static void blkdev_bio_end_io(struct bio *bio)/*gql-回调函数，bio的回调�
 				ret = blk_status_to_errno(dio->bio.bi_status);
 			}
 				/*gql-012:trans将bio里面从设备端返回的flag消息传递回给kiocb*/
-			printk("012: blkdev_bio_end_io: bio->usrflag --iocb: %llu\n",bio->bi_usrflag);
+			// printk("012: blkdev_bio_end_io: bio->usrflag --iocb: %llu\n",bio->bi_usrflag);
 			iocb->ki_usrflag = bio->bi_usrflag;
 
 			dio->iocb->ki_complete(iocb, ret, 0);
@@ -393,7 +393,7 @@ __blkdev_direct_IO(struct kiocb *iocb, struct iov_iter *iter, int nr_pages)
 		bio->bi_private = dio;/*__blkdev_direct_IO函数所在上下文与bio回调函数之间传递私有数据的通道*/
 		bio->bi_end_io = blkdev_bio_end_io;/*gql-设置回调函数，使用dio结构传递返回参数和数据*/
 		bio->bi_ioprio = iocb->ki_ioprio;
-		printk("003->__blkdev_direct_IO: iocb->ki_usrflag--bio: %llu\n",iocb->ki_usrflag);
+		// printk("003->__blkdev_direct_IO: iocb->ki_usrflag--bio: %llu\n",iocb->ki_usrflag);
 		bio->bi_usrflag = iocb->ki_usrflag;/*Gtodo gql-003：struct kiocb --> strcut bio*/
 
 		ret = bio_iov_iter_get_pages(bio, iter);/*gql-读取用户缓冲区数据地址，后面进行io驱动请求的时候能够直接拷贝到用户请求中*/
