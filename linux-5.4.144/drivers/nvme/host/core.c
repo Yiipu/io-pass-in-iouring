@@ -785,7 +785,7 @@ static void usr_setup_cmd(struct nvme_ns *ns, struct request *req,
 	/* gql-: For trans usrflag */
 	if(req && req->bio)
 	{
-		printk("Usr_setup_cmd: req-bio-usrflag: %llu\n",req->bio->bi_usrflag);
+		printk("004: Usr_setup_cmd: req-bio-usrflag--cmd: %llu\n",req->bio->bi_usrflag);
 		c->rsvd2 = READ_ONCE(req->bio->bi_usrflag); /* gql-forth trans */
 	}
 }

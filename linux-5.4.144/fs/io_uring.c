@@ -983,6 +983,7 @@ static void io_complete_rw(struct kiocb *kiocb, long res, long res2)
 	if ((req->flags & REQ_F_LINK) && res != req->result)
 		req->flags |= REQ_F_FAIL_LINK;
 	// io_cqring_add_event(req->ctx, req->user_data, res);
+	printk("013: io_complete_rw: kiocb->ki_usrflag -- uring_cqe: %llu\n",kiocb->ki_usrflag);
 	io_cqring_add_event(req->ctx, kiocb->ki_usrflag, res);/*gql-014:修改源代码，传递信息回给用户的cqe*/
 	io_put_req(req);
 }
@@ -1124,7 +1125,7 @@ static int io_prep_rw(struct io_kiocb *req, const struct sqe_submit *s,
 	kiocb->ki_pos = READ_ONCE(sqe->off);
 	kiocb->ki_flags = iocb_flags(kiocb->ki_filp);
 	kiocb->ki_hint = ki_hint_validate(file_write_hint(kiocb->ki_filp));
-
+	printk("002->io_read->io_prep_rw: sqe->usrflag: %llu\n",sqe->usr_flag);
 	kiocb->ki_usrflag = READ_ONCE(sqe->usr_flag);/*gql-002: flag sqe_submit to kiocb*/
 
 	ioprio = READ_ONCE(sqe->ioprio);
@@ -1416,7 +1417,7 @@ static int io_read(struct io_kiocb *req, const struct sqe_submit *s,
 	size_t iov_count;
 	ssize_t read_size, ret;
 	
-	//pass the user flag to kiocb
+	/*gql-000:pass the user flag to kiocb*/
 	ret = io_prep_rw(req, s, force_nonblock);
 	if (ret)
 		return ret;
@@ -2939,9 +2940,12 @@ static int io_ring_submit(struct io_ring_ctx *ctx, unsigned int to_submit)
 	for (i = 0; i < to_submit; i++) {
 		struct sqe_submit s;
 
-		if (!io_get_sqring(ctx, &s))
-			break;
 
+		if (!io_get_sqring(ctx, &s))
+		{
+			break;
+		}
+		printk("00: io_ring_submit --  sqesubmit->usrflag:%llu\n",s.sqe->usr_flag);
 		/*
 		 * If previous wasn't linked and we have a linked command,
 		 * that's the end of the chain. Submit the previous link.

@@ -51,7 +51,7 @@ struct io_uring_sqe {
 			__u32	file_index;
 		};
 		union{
-			__u64   usr_flag;
+			__u64   usr_flag; /* gql-001：struct sqe_submit*/
 			__u64	__pad22[2];
 		};
 	};

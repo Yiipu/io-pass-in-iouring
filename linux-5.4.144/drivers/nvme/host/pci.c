@@ -998,7 +998,7 @@ static inline void pass_usrflag_to_bio(struct request *req,
 	/* Coperd: is this enough?? */
 	//WARN_ON(req->bio != req->biotail);
 	if (req && req->bio) {
-		printk("Nvem_handle_ceqe: pass cqe->usrflag: %llu\n",cqe->result.u64);
+		printk("011: Nvme_handle_cqe: cqe->result -- bio: %llu\n",cqe->result.u64);
 		req->bio->bi_usrflag = cqe->result.u64;
 	}
 }

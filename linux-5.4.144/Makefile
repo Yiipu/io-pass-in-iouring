@@ -2,7 +2,7 @@
 VERSION = 5
 PATCHLEVEL = 4
 SUBLEVEL = 144
-EXTRAVERSION = -modify-kiocb-usrflag
+EXTRAVERSION = -add-printk
 NAME = Kleptomaniac Octopus
 
 # *DOCUMENTATION*
