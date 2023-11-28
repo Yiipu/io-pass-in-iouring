@@ -796,7 +796,7 @@ static void io_iopoll_complete(struct io_ring_ctx *ctx, unsigned int *nr_events,
 		list_del(&req->list);
 
 		// printk("302: io_iopoll_complete: %llu\n",req->user_data);
-		io_cqring_fill_event(ctx,req->user_data, req->result);
+		io_cqring_fill_event(ctx,req->user_data, req->result);/*gql-015:传递回给cqe中*/
 		(*nr_events)++;
 
 		if (refcount_dec_and_test(&req->refs)) {
@@ -983,9 +983,9 @@ static void io_complete_rw(struct kiocb *kiocb, long res, long res2)
 
 	if ((req->flags & REQ_F_LINK) && res != req->result)
 		req->flags |= REQ_F_FAIL_LINK;
-	// io_cqring_add_event(req->ctx, req->user_data, res);
+	io_cqring_add_event(req->ctx, req->user_data, res);
 	// printk("013: io_complete_rw: kiocb->ki_usrflag -- uring_cqe: %llu\n",kiocb->ki_usrflag);
-	io_cqring_add_event(req->ctx, kiocb->ki_usrflag, res);/*gql-014:修改源代码，传递信息回给用户的cqe*/
+	// io_cqring_add_event(req->ctx, kiocb->ki_usrflag, res);
 	io_put_req(req);
 }
 
@@ -993,7 +993,7 @@ static void io_complete_rw_iopoll(struct kiocb *kiocb, long res, long res2)
 {
 	struct io_kiocb *req = container_of(kiocb, struct io_kiocb, rw);
 
-	req->user_data = kiocb->ki_usrflag;
+	req->user_data = kiocb->ki_usrflag;/*gql-014:传递信息回给kiocb,后续通过io_cqring_fill_event传递给cqe到应用层*/
 	// printk("014: io_complete_rw_iopoll: kiocb->ki_usrflag -- uring_cqe: %llu\n",req->rw.ki_usrflag);
 	if (kiocb->ki_flags & IOCB_WRITE)
 		kiocb_end_write(req);
@@ -1158,12 +1158,12 @@ static int io_prep_rw(struct io_kiocb *req, const struct sqe_submit *s,
 			return -EOPNOTSUPP;
 
 		kiocb->ki_flags |= IOCB_HIPRI;
-		kiocb->ki_complete = io_complete_rw_iopoll;
+		kiocb->ki_complete = io_complete_rw_iopoll;/*gql-013:处理kiocb的回调函数*/
 		req->result = 0;
 	} else {
 		if (kiocb->ki_flags & IOCB_HIPRI)
 			return -EINVAL;
-		kiocb->ki_complete = io_complete_rw;/*gql-013:处理kiocb的回调函数*/
+		kiocb->ki_complete = io_complete_rw;
 	}
 	return 0;
 }
@@ -1419,7 +1419,7 @@ static int io_read(struct io_kiocb *req, const struct sqe_submit *s,
 	size_t iov_count;
 	ssize_t read_size, ret;
 	
-	/*gql-000:pass the user flag to kiocb*/
+	/*gql-001:pass the user flag to kiocb*/
 	ret = io_prep_rw(req, s, force_nonblock);
 	if (ret)
 		return ret;
@@ -2947,7 +2947,7 @@ static int io_ring_submit(struct io_ring_ctx *ctx, unsigned int to_submit)
 		{
 			break;
 		}
-		printk("001: io_ring_submit:sqe->usrflag:%llu,sqe->usrdata:%llu\n",s.sqe->usr_flag,s.sqe->user_data);
+		// printk("001: io_ring_submit:sqe->usrflag:%llu,sqe->usrdata:%llu\n",s.sqe->usr_flag,s.sqe->user_data);
 		/*
 		 * If previous wasn't linked and we have a linked command,
 		 * that's the end of the chain. Submit the previous link.

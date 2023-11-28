@@ -32,27 +32,12 @@ struct io_uring_sqe {
 	};
 	__u64	user_data;	/* data to be passed back at completion time */
 
-
 	union {
-		union {
-			__u16	buf_index;	/* index into fixed buffers, if used */
-			__u64	__pad2[3];
-		};
-		union {
-			/* index into fixed buffers, if used */
-			__u16	buf_index2;
-			/* for grouped buffer selection */
-			__u16	buf_group;
-		} __attribute__((packed));
-		/* personality to use, if used */
-		__u16	personality;
-		union {
-			__s32	splice_fd_in;
-			__u32	file_index;
-		};
-		union{
-			__u64   usr_flag; /* gql-001：struct sqe_submit*/
-			__u64	__pad22[2];
+		__u16	buf_index;	/* index into fixed buffers, if used */
+		__u64	__pad2[3];
+		struct{
+		__u64	__pad22[2];
+		__u64   usr_flag; /* gql-000：struct sqe_submit*/
 		};
 	};
 };
