@@ -316,7 +316,7 @@ asmlinkage long sys_io_pgetevents_time32(aio_context_t ctx_id,
 				const struct __aio_sigset *sig);
 asmlinkage long sys_io_uring_setup(u32 entries,
 				struct io_uring_params __user *p);
-asmlinkagsys_io_uring_enter(e long unsigned int fd, u32 to_submit,
+asmlinkage long sys_io_uring_enter(unsigned int fd, u32 to_submit,
 				u32 min_complete, u32 flags,
 				const sigset_t __user *sig, size_t sigsz);
 asmlinkage long sys_io_uring_register(unsigned int fd, unsigned int op,
