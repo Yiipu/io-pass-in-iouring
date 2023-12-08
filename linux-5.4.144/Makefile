@@ -2,7 +2,7 @@
 VERSION = 5
 PATCHLEVEL = 4
 SUBLEVEL = 144
-EXTRAVERSION = -add-printk
+EXTRAVERSION = -complete-iopass
 NAME = Kleptomaniac Octopus
 
 # *DOCUMENTATION*
