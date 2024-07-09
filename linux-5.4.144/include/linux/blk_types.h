@@ -17,7 +17,7 @@ struct page;
 struct block_device;
 struct io_context;
 struct cgroup_subsys_state;
-typedef void (bio_end_io_t) (struct bio *);
+typedef void (bio_end_io_t) (struct bio *); // IO 结束回调函数
 
 /*
  * Block error status values.  See block/blk-core:blk_errors for the details.
@@ -153,6 +153,8 @@ struct bio {
 	unsigned short		bi_write_hint;
 	blk_status_t		bi_status;
 	u8			bi_partno;
+
+	u64			bi_userflag; // 语义传递实验字段
 
 	struct bvec_iter	bi_iter;
 

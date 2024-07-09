@@ -34,6 +34,7 @@ struct io_uring_sqe {
 	union {
 		__u16	buf_index;	/* index into fixed buffers, if used */
 		__u64	__pad2[3];
+		__u64	user_flag; // 语义传递实验字段
 	};
 };
 

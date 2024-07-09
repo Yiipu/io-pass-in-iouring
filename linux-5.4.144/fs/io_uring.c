@@ -990,6 +990,14 @@ static void io_complete_rw_iopoll(struct kiocb *kiocb, long res, long res2)
 {
 	struct io_kiocb *req = container_of(kiocb, struct io_kiocb, rw);
 
+	/*
+	Q: io_kiocb 中包含了 kiocb, 为什么还要传递一下? 
+	直接用 io_kiocb->kiocb->ki_userflag 不就好了吗?
+
+	A: 因为这个函数入参是 kiocb, 是内核的 IO 数据结构, req 的 user_data 需要被填充
+	*/ 
+	req->user_data = kiocb->ki_userflag;
+
 	if (kiocb->ki_flags & IOCB_WRITE)
 		kiocb_end_write(req);
 
@@ -1123,6 +1131,7 @@ static int io_prep_rw(struct io_kiocb *req, const struct sqe_submit *s,
 	kiocb->ki_pos = READ_ONCE(sqe->off);
 	kiocb->ki_flags = iocb_flags(kiocb->ki_filp);
 	kiocb->ki_hint = ki_hint_validate(file_write_hint(kiocb->ki_filp));
+	kiocb->ki_userflag = READ_ONCE(sqe->user_flag);
 
 	ioprio = READ_ONCE(sqe->ioprio);
 	if (ioprio) {
@@ -2788,7 +2797,7 @@ out:
 
 static int io_sq_thread(void *data)
 {
-	struct io_ring_ctx *ctx = data;
+	struct io_ring_ctx *ctx = data; // io_uring 上下文
 	struct mm_struct *cur_mm = NULL;
 	const struct cred *old_cred;
 	mm_segment_t old_fs;
@@ -2796,67 +2805,53 @@ static int io_sq_thread(void *data)
 	unsigned inflight;
 	unsigned long timeout;
 
+	// 发出信号, 表示守护进程已经启动
 	complete(&ctx->sqo_thread_started);
 
-	old_fs = get_fs();
-	set_fs(USER_DS);
-	old_cred = override_creds(ctx->creds);
+	old_fs = get_fs(); // 获取当前的地址空间
+	set_fs(USER_DS); // 设置为用户空间
+	old_cred = override_creds(ctx->creds); // 临时覆盖进程的凭证
 
 	timeout = inflight = 0;
-	while (!kthread_should_park()) {
+	while (!kthread_should_park()) { // 循环直到线程被要求停止
 		bool mm_fault = false;
 		unsigned int to_submit;
 
-		if (inflight) {
+		if (inflight) { // 检查是否有已提交但未完成的请求
 			unsigned nr_events = 0;
 
-			if (ctx->flags & IORING_SETUP_IOPOLL) {
+			if (ctx->flags & IORING_SETUP_IOPOLL) { // 如果设置了 IOPOLL
 				/*
-				 * inflight is the count of the maximum possible
-				 * entries we submitted, but it can be smaller
-				 * if we dropped some of them. If we don't have
-				 * poll entries available, then we know that we
-				 * have nothing left to poll for. Reset the
-				 * inflight count to zero in that case.
+				 * inflight 是我们提交的最大可能条目的计数，但如果我们丢弃了一些，则可能更小。
+				 * 如果我们没有可用的 poll 条目，则我们知道我们没有剩余的 poll 条目。
+				 * 在这种情况下，将 inflight 计数重置为零。
 				 */
 				mutex_lock(&ctx->uring_lock);
 				if (!list_empty(&ctx->poll_list))
-					io_iopoll_getevents(ctx, &nr_events, 0);
+					io_iopoll_getevents(ctx, &nr_events, 0); // 获取已完成的请求数量
 				else
 					inflight = 0;
 				mutex_unlock(&ctx->uring_lock);
 			} else {
-				/*
-				 * Normal IO, just pretend everything completed.
-				 * We don't have to poll completions for that.
-				 */
+				// 普通 IO，假设所有请求都已完成
 				nr_events = inflight;
 			}
 
-			inflight -= nr_events;
+			inflight -= nr_events; // 更新待处理的请求数量
 			if (!inflight)
-				timeout = jiffies + ctx->sq_thread_idle;
+				timeout = jiffies + ctx->sq_thread_idle; // 设置下一次空闲的时间戳
 		}
 
-		to_submit = io_sqring_entries(ctx);
-		if (!to_submit) {
-			/*
-			 * Drop cur_mm before scheduling, we can't hold it for
-			 * long periods (or over schedule()). Do this before
-			 * adding ourselves to the waitqueue, as the unuse/drop
-			 * may sleep.
-			 */
+		to_submit = io_sqring_entries(ctx); // 检查是否有待提交的请求
+		if (!to_submit) { // 如果没有待提交的请求
+			// 在调度前释放 cur_mm，因为我们不能长时间持有它（或在调度期间）
 			if (cur_mm) {
 				unuse_mm(cur_mm);
 				mmput(cur_mm);
 				cur_mm = NULL;
 			}
 
-			/*
-			 * We're polling. If we're within the defined idle
-			 * period, then let us spin without work before going
-			 * to sleep.
-			 */
+			// 我们正在轮询。如果我们在定义的空闲期内，则让我们在进入睡眠前自旋等待
 			if (inflight || !time_after(jiffies, timeout)) {
 				cond_resched();
 				continue;
@@ -2865,12 +2860,12 @@ static int io_sq_thread(void *data)
 			prepare_to_wait(&ctx->sqo_wait, &wait,
 						TASK_INTERRUPTIBLE);
 
-			/* Tell userspace we may need a wakeup call */
+			// 告诉用户空间我们可能需要一个唤醒调用
 			ctx->rings->sq_flags |= IORING_SQ_NEED_WAKEUP;
-			/* make sure to read SQ tail after writing flags */
+			// 确保在写入标志后读取 SQ 尾部
 			smp_mb();
 
-			to_submit = io_sqring_entries(ctx);
+			to_submit = io_sqring_entries(ctx); // 再次检查是否有待提交的请求
 			if (!to_submit) {
 				if (kthread_should_park()) {
 					finish_wait(&ctx->sqo_wait, &wait);
@@ -2878,7 +2873,7 @@ static int io_sq_thread(void *data)
 				}
 				if (signal_pending(current))
 					flush_signals(current);
-				schedule();
+				schedule(); // 进行调度，等待唤醒
 				finish_wait(&ctx->sqo_wait, &wait);
 
 				ctx->rings->sq_flags &= ~IORING_SQ_NEED_WAKEUP;
@@ -2889,31 +2884,31 @@ static int io_sq_thread(void *data)
 			ctx->rings->sq_flags &= ~IORING_SQ_NEED_WAKEUP;
 		}
 
-		/* Unless all new commands are FIXED regions, grab mm */
+		// 除非所有新命令都是固定区域，否则获取 mm
 		if (!cur_mm) {
 			mm_fault = !mmget_not_zero(ctx->sqo_mm);
 			if (!mm_fault) {
-				use_mm(ctx->sqo_mm);
+				use_mm(ctx->sqo_mm); // 使用当前进程的内存管理结构
 				cur_mm = ctx->sqo_mm;
 			}
 		}
 
-		to_submit = min(to_submit, ctx->sq_entries);
+		to_submit = min(to_submit, ctx->sq_entries); // 获取待提交的请求数量
 		inflight += io_submit_sqes(ctx, to_submit, cur_mm != NULL,
-					   mm_fault);
+					   mm_fault); // 提交请求
 
-		/* Commit SQ ring head once we've consumed all SQEs */
+		// 在我们消费完所有 SQEs 后提交 SQ ring 头
 		io_commit_sqring(ctx);
 	}
 
-	set_fs(old_fs);
+	set_fs(old_fs); // 恢复原来的地址空间
 	if (cur_mm) {
 		unuse_mm(cur_mm);
 		mmput(cur_mm);
 	}
-	revert_creds(old_cred);
+	revert_creds(old_cred); // 恢复原来的进程凭证
 
-	kthread_parkme();
+	kthread_parkme(); // 停车
 
 	return 0;
 }
@@ -3309,6 +3304,7 @@ static int io_sq_offload_start(struct io_ring_ctx *ctx,
 							ctx, cpu,
 							"io_uring-sq");
 		} else {
+			// 启动 io_sq_thread 守护线程来实现对sqe请求的监听处理
 			ctx->sqo_thread = kthread_create(io_sq_thread, ctx,
 							"io_uring-sq");
 		}

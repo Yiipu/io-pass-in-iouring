@@ -82,6 +82,20 @@ TRACE_EVENT(nvme_setup_cmd,
 				__entry->fctype, __entry->cdw10))
 );
 
+// TRACE_EVENT(user_setup_cmd,
+// 	TP_PROTO(struct nvme_ns *ns, struct request *req, struct nvme_command *cmd),
+// 	TP_ARGS(ns, req, cmd),
+// 	TP_STRUCT__entry(
+// 		__field(unsigned int, opcode)
+// 		__field(u64, userflag)
+// 	),
+// 	TP_fast_assign(
+// 		__entry->opcode = cmd->rw.opcode;
+// 		__entry->userflag = req && req->bio ? req->bio->bi_userflag : 0;
+// 	),
+// 	TP_printk("NSID=%u, Opcode=%u, UserFlag=%llu", __entry->nsid, __entry->opcode, __entry->userflag)
+// );
+
 TRACE_EVENT(nvme_complete_rq,
 	    TP_PROTO(struct request *req),
 	    TP_ARGS(req),

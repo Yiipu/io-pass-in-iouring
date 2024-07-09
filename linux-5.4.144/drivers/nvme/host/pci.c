@@ -980,6 +980,13 @@ static inline struct blk_mq_tags *nvme_queue_tagset(struct nvme_queue *nvmeq)
 	return nvmeq->dev->tagset.tags[nvmeq->qid - 1];
 }
 
+static inline void pass_userflag_to_bio(struct request *req, volatile struct nvme_completion *cqe)
+{
+	if(req && req->bio){
+		req->bio->bi_userflag = cqe->result.u64;
+	}
+}
+
 static inline void nvme_handle_cqe(struct nvme_queue *nvmeq, u16 idx)
 {
 	volatile struct nvme_completion *cqe = &nvmeq->cqes[idx];
@@ -1005,6 +1012,8 @@ static inline void nvme_handle_cqe(struct nvme_queue *nvmeq, u16 idx)
 			cqe->command_id, le16_to_cpu(cqe->sq_id));
 		return;
 	}
+
+	pass_userflag_to_bio(req, cqe);
 
 	trace_nvme_sq(req, cqe->sq_head, nvmeq->sq_tail);
 	nvme_end_request(req, cqe->status, cqe->result);

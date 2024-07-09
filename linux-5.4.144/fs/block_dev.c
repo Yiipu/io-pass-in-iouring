@@ -318,6 +318,8 @@ static void blkdev_bio_end_io(struct bio *bio)
 				ret = blk_status_to_errno(dio->bio.bi_status);
 			}
 
+			iocb->ki_userflag = bio->bi_userflag;
+
 			dio->iocb->ki_complete(iocb, ret, 0);
 			if (dio->multi_bio)
 				bio_put(&dio->bio);
@@ -385,6 +387,7 @@ __blkdev_direct_IO(struct kiocb *iocb, struct iov_iter *iter, int nr_pages)
 		bio->bi_private = dio;
 		bio->bi_end_io = blkdev_bio_end_io;
 		bio->bi_ioprio = iocb->ki_ioprio;
+		bio->bi_userflag = iocb->ki_userflag;
 
 		ret = bio_iov_iter_get_pages(bio, iter);
 		if (unlikely(ret)) {

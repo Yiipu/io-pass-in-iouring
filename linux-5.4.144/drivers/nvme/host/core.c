@@ -769,6 +769,26 @@ void nvme_cleanup_cmd(struct request *req)
 }
 EXPORT_SYMBOL_GPL(nvme_cleanup_cmd);
 
+// IOPASSTODO: 考虑挪到更合适的位置?
+static void user_setup_cmd(struct nvme_ns *ns, struct request *req, struct nvme_command *cmd)
+{
+	struct nvme_rw_command *c = &(cmd->rw);
+	
+	/* do this at the very end of nvme_setup_cmd */
+	if(c->opcode != nvme_cmd_read){
+		return;
+	}
+	
+	WARN_ON(!req->bio);
+	/* gql-: For trans userflag */
+	if(req && req->bio)
+	{
+		// if(req->bio->bi_userflag == 1024)
+		// printk("004: User_setup_cmd: req-bio-userflag--cmd: %llu\n", req->bio->bi_userflag)
+		c->rsvd2 = READ_ONCE(req->bio->bi_userflag); /* gql-forth trans */
+	}
+}
+
 blk_status_t nvme_setup_cmd(struct nvme_ns *ns, struct request *req,
 		struct nvme_command *cmd)
 {
@@ -802,6 +822,7 @@ blk_status_t nvme_setup_cmd(struct nvme_ns *ns, struct request *req,
 
 	cmd->common.command_id = req->tag;
 	trace_nvme_setup_cmd(req, cmd);
+	user_setup_cmd(ns, req, cmd);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(nvme_setup_cmd);
